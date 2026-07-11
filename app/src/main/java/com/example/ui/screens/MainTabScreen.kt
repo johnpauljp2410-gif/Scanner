@@ -99,7 +99,7 @@ fun MainTabScreen(
             // Bottom-anchored banner ads corresponding to the selected tab
             when (selectedTab) {
                 0 -> AdBanner(adUnitId = AdConfig.homeBannerId)
-                1 -> AdBanner(adUnitId = AdConfig.historyNativeId)
+                1 -> AdBanner(adUnitId = AdConfig.scannerBannerId)
                 2 -> { /* No ads on Settings tab to keep it clean */ }
             }
         }

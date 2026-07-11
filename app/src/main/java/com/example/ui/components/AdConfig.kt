@@ -15,7 +15,7 @@ object AdConfig {
     private const val PROD_HISTORY_NATIVE_ID = "ca-app-pub-6558395504048408/7574299884"
 
     // Set to true to activate original/production AdMob ads, or false to use Google's safe test ads
-    private const val FORCE_PRODUCTION_ADS = true
+    private const val FORCE_PRODUCTION_ADS = false
 
     val homeBannerId: String
         get() = if (FORCE_PRODUCTION_ADS || !BuildConfig.DEBUG) PROD_HOME_BANNER_ID else TEST_BANNER_ID
