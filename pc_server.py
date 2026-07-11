@@ -106,17 +106,22 @@ class PCServerHandler(http.server.BaseHTTPRequestHandler):
     def set_clipboard(self, text):
         if sys.platform == "win32":
             import ctypes
-            # Quick direct Windows API clipboard write
+            CF_UNICODETEXT = 13
+            GMEM_MOVEABLE = 0x0002
+            # Encode as UTF-16 LE (Windows native Unicode format) + null terminator
+            text_utf16 = text.encode("utf-16-le") + b"\x00\x00"
             ctypes.windll.user32.OpenClipboard(0)
             ctypes.windll.user32.EmptyClipboard()
-            hCd = ctypes.windll.kernel32.GlobalAlloc(2, len(text) + 1)
+            hCd = ctypes.windll.kernel32.GlobalAlloc(GMEM_MOVEABLE, len(text_utf16))
             pchCd = ctypes.windll.kernel32.GlobalLock(hCd)
-            ctypes.cdll.msvcrt.strcpy(ctypes.c_char_p(pchCd), text.encode("utf-8"))
+            ctypes.memmove(pchCd, text_utf16, len(text_utf16))
             ctypes.windll.kernel32.GlobalUnlock(hCd)
-            ctypes.windll.user32.SetClipboardData(1, hCd) # CF_TEXT
+            ctypes.windll.user32.SetClipboardData(CF_UNICODETEXT, hCd)
             ctypes.windll.user32.CloseClipboard()
         elif sys.platform == "darwin":
-            os.system(f"echo '{text}' | pbcopy")
+            import subprocess
+            # Use subprocess instead of os.system to safely handle special characters
+            subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=False)
         else:
             # Linux fallback
             try:
