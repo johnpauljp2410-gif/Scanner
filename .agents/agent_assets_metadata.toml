@@ -6,3 +6,9 @@ id = "MigBwZHKVTt0xnK7gL_Ru"
 uri = "file://app/my-upload-key.jks"
 type = "unspecified"
 title = "my-upload-key.jks (Codemagic-এ upload করুন)"
+
+[[outputs]]
+id = "RfSM47Qj4zYmVgoga5XXu"
+uri = "file://pc_server.py"
+type = "unspecified"
+title = "pc_server.py — Updated Server"
