@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "MigBwZHKVTt0xnK7gL_Ru"
+uri = "file://app/my-upload-key.jks"
+type = "unspecified"
+title = "my-upload-key.jks (Codemagic-এ upload করুন)"
