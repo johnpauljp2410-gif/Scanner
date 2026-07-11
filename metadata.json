@@ -1,0 +1,6 @@
+{
+  "name": "Network Scan Sender",
+  "description": "Scan barcodes and QR codes and send them directly to your PC over the local network or save them offline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
