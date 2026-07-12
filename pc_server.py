@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import messagebox, scrolledtext, filedialog
 import socket
 import threading
+import queue
 import subprocess
 import sys
 import ctypes
@@ -84,6 +85,7 @@ prefix_text     = ""
 suffix_text     = ""
 connected_devices = {}          # ip → {count, last_seen, last_seen_ts}
 scan_log          = []          # newest first, max 200
+scan_queue        = queue.Queue()   # serializes typing — no overlap
 flask_running     = False
 tray_running      = False
 tray_icon_obj     = None
@@ -213,6 +215,7 @@ def type_text(text):
     Type barcode text — clipboard mode: instant + full Unicode support.
     Keyboard mode: ASCII only, slower (legacy fallback).
     Restores original clipboard after paste.
+    Always called from the single typing-worker thread — never concurrently.
     """
     full = prefix_text + text + suffix_text
     if typing_method == "clipboard":
@@ -229,6 +232,30 @@ def type_text(text):
                 _clipboard_clear()
     else:
         pyautogui.write(full, interval=0.01)
+
+# ── Typing worker — one thread, one scan at a time ──────────
+def _typing_worker():
+    """
+    Consumes scan_queue serially so keyboard/clipboard is never
+    touched by two threads simultaneously. HTTP responses are
+    already sent before this runs — zero scan loss, zero overlap.
+    """
+    while True:
+        item = scan_queue.get()          # blocks until a scan arrives
+        if item is None:                 # sentinel → stop worker
+            break
+        barcode, scan_type, client_ip, count = item
+        try:
+            type_text(barcode)
+            if auto_enter:
+                pyautogui.press('enter')
+        except Exception as e:
+            print(f"Typing error: {e}")
+        play_scan_sound()
+        root.after(0, lambda b=barcode, t=scan_type,
+                          ip=client_ip, c=count:
+                   _ui_on_scan(b, t, ip, c))
+        scan_queue.task_done()
 
 # ============================================================
 # SOUND
@@ -282,15 +309,8 @@ def scan():
 
     _update_device(client_ip)
 
-    try:
-        type_text(barcode)
-        if auto_enter:
-            pyautogui.press('enter')
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
-
-    play_scan_sound()
-    root.after(0, lambda: _ui_on_scan(barcode, scan_type, client_ip, current_count))
+    # Enqueue — HTTP response is instant, typing happens serially in worker
+    scan_queue.put((barcode, scan_type, client_ip, current_count))
     return jsonify({"status": "ok"}), 200
 
 def run_flask():
@@ -722,6 +742,7 @@ footer_label.pack()
 # ============================================================
 # LAUNCH
 # ============================================================
-threading.Thread(target=run_flask, daemon=True).start()
+threading.Thread(target=run_flask,    daemon=True).start()
+threading.Thread(target=_typing_worker, daemon=True).start()  # serial queue
 root.after(30_000, _cleanup_old_devices)
 root.mainloop()
