@@ -212,108 +212,164 @@ fun HomeTab(
             }
         }
 
-        // Active Connection Status Card
+        // Active Connection Status Card — Professional Redesign
         item {
-            val statusColor = if (activeDevice == null) Color(0xFFEF4444) 
-                              else if (connectionOk == true) Color(0xFF10B981) 
-                              else Color(0xFFF59E0B)
-            
-            // Pulsing animation for outer ring / connection status
+            val statusColor = when {
+                activeDevice == null  -> Color(0xFFEF4444)
+                connectionOk == true  -> Color(0xFF10B981)
+                else                  -> Color(0xFFF59E0B)
+            }
+            val statusLabel = when {
+                activeDevice == null  -> "NOT CONNECTED"
+                connectionOk == true  -> "CONNECTED"
+                else                  -> "RECONNECTING"
+            }
+            val statusIcon = when {
+                activeDevice == null  -> Icons.Default.WifiOff
+                connectionOk == true  -> Icons.Default.Wifi
+                else                  -> Icons.Default.Sync
+            }
+
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val pulseScale by infiniteTransition.animateFloat(
-                initialValue = 1.0f,
-                targetValue = 1.6f,
+                initialValue = 1.0f, targetValue = 1.7f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(1200, easing = FastOutSlowInEasing),
+                    animation = tween(1400, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Restart
-                ),
-                label = "pulseScale"
+                ), label = "pulseScale"
             )
             val pulseAlpha by infiniteTransition.animateFloat(
-                initialValue = 0.6f,
-                targetValue = 0.0f,
+                initialValue = 0.55f, targetValue = 0.0f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(1200, easing = FastOutSlowInEasing),
+                    animation = tween(1400, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Restart
-                ),
-                label = "pulseAlpha"
+                ), label = "pulseAlpha"
             )
             val glowAlpha by infiniteTransition.animateFloat(
-                initialValue = 0.06f,
-                targetValue = 0.16f,
+                initialValue = 0.05f, targetValue = 0.14f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(1500, easing = LinearEasing),
+                    animation = tween(1600, easing = LinearEasing),
                     repeatMode = RepeatMode.Reverse
-                ),
-                label = "glowAlpha"
+                ), label = "glowAlpha"
             )
 
-            val statusBg = if (connectionOk == true) statusColor.copy(alpha = glowAlpha) else statusColor.copy(alpha = 0.08f)
-
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = statusBg),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = statusColor.copy(
+                        alpha = if (connectionOk == true) glowAlpha else 0.06f
+                    )
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(
-                        width = 1.dp,
-                        color = if (connectionOk == true) statusColor.copy(alpha = 0.3f) else statusColor.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(16.dp)
+                        1.dp,
+                        statusColor.copy(alpha = if (connectionOk == true) 0.35f else 0.18f),
+                        RoundedCornerShape(18.dp)
                     )
                     .then(
-                        if (activeDevice == null || connectionOk != true) {
+                        if (activeDevice == null || connectionOk != true)
                             Modifier.clickable { onNavigateToScanner("connect") }
-                        } else {
-                            Modifier
-                        }
+                        else Modifier
                     )
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier.size(16.dp),
-                        contentAlignment = Alignment.Center
+                    // ── Row 1: status pill + disconnect button ───────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Outer pulsing circle
+                        // Colored status pill with pulsing dot
+                        Surface(
+                            color = statusColor.copy(alpha = 0.14f),
+                            shape = RoundedCornerShape(99.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(14.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .scale(pulseScale)
+                                            .clip(CircleShape)
+                                            .background(statusColor.copy(alpha = pulseAlpha))
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(statusColor)
+                                    )
+                                }
+                                Text(
+                                    text = statusLabel,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = statusColor,
+                                    letterSpacing = 0.6.sp
+                                )
+                            }
+                        }
+
+                        if (activeDevice != null) {
+                            IconButton(
+                                onClick = { viewModel.connectTo(null) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.LinkOff,
+                                    "Disconnect",
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Row 2: wifi icon + device name / subtitle ────────
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
-                                .scale(pulseScale)
-                                .clip(CircleShape)
-                                .background(statusColor.copy(alpha = pulseAlpha))
-                        )
-                        // Inner solid dot
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(statusColor)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (activeDevice == null) "Not Connected"
-                                   else if (connectionOk == true) "Connected to PC"
-                                   else "Reconnecting to PC…",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            text = activeDevice?.let { 
-                                if (connectionOk == true) "${it.name} (${it.host}:${it.port})" 
-                                else "Auto-reconnecting to ${it.name}…"
-                            } ?: "Tap here to connect to PC server",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f)
-                        )
-                    }
-                    if (activeDevice != null) {
-                        IconButton(onClick = { viewModel.connectTo(null) }) {
-                            Icon(Icons.Default.LinkOff, "Disconnect", tint = Color(0xFFEF4444))
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(statusColor.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = statusIcon,
+                                contentDescription = "Connection",
+                                tint = statusColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = activeDevice?.name ?: "No PC Connected",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = activeDevice?.let {
+                                    if (connectionOk == true) "${it.host}  ·  Port ${it.port}"
+                                    else "Retrying connection to ${it.host}…"
+                                } ?: "Tap this card to pair with your PC server  →",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+                            )
                         }
                     }
                 }
@@ -593,6 +649,7 @@ fun HomeTab(
                             DeviceRow(
                                 device = device,
                                 isDiscovered = true,
+                                isActive = device.host == activeDevice?.host && connectionOk == true,
                                 onConnect = { viewModel.connectTo(device) }
                             )
                         }
@@ -642,6 +699,7 @@ fun HomeTab(
                 DeviceRow(
                     device = device,
                     isDiscovered = false,
+                    isActive = device.host == activeDevice?.host && connectionOk == true,
                     onConnect = { viewModel.connectTo(device) },
                     onMore = { showDeviceMenu = device }
                 )
@@ -1004,64 +1062,114 @@ fun StepItem(number: String, text: String) {
 fun DeviceRow(
     device: DbDevice,
     isDiscovered: Boolean,
+    isActive: Boolean = false,          // true = currently connected to this device
     onConnect: () -> Unit,
     onMore: (() -> Unit)? = null
 ) {
+    val green = Color(0xFF10B981)
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isActive) green.copy(alpha = 0.07f)
+                             else MaterialTheme.colorScheme.surface
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onConnect() }
-            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+            .border(
+                width = 1.dp,
+                color = if (isActive) green.copy(alpha = 0.4f)
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                shape = RoundedCornerShape(12.dp)
+            )
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Icon avatar — green tint when live
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                    .background(
+                        if (isActive) green.copy(alpha = 0.18f)
+                        else MaterialTheme.colorScheme.secondaryContainer
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Computer,
                     contentDescription = "PC",
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    tint = if (isActive) green else MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp)
                 )
             }
+
             Column(modifier = Modifier.weight(1f)) {
+                // Name + live dot
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = device.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (isActive) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .clip(CircleShape)
+                                .background(green)
+                        )
+                    }
+                }
                 Text(
-                    text = device.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${device.host}:${device.port}",
+                    text = if (isActive) "${device.host}:${device.port}  ·  Connected"
+                           else "${device.host}:${device.port}",
                     fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = if (isActive) green.copy(alpha = 0.85f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
-            if (isDiscovered) {
-                Text(
-                    text = "PAIR",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            } else if (onMore != null) {
-                IconButton(onClick = onMore) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+
+            // Right badge / action
+            when {
+                isActive -> {
+                    Surface(
+                        color = green.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(99.dp)
+                    ) {
+                        Text(
+                            text = "LIVE",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = green,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                isDiscovered -> {
+                    Text(
+                        text = "PAIR",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
+                }
+                onMore != null -> {
+                    IconButton(onClick = onMore) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

@@ -401,6 +401,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _liveScans.value = _liveScans.value.map {
             if (it.id == id) it.copy(ok = ok) else it
         }
+        // Auto-dismiss from scanner overlay 2 s after status is final
+        if (ok != null) {
+            viewModelScope.launch {
+                delay(2000)
+                _liveScans.value = _liveScans.value.filter { it.id != id }
+            }
+        }
     }
 
     fun incrementFailedScans() {
@@ -462,6 +469,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
         dao.updateScanSent(scanId, ok)
         return ok
+    }
+
+    /** Resend the single most-recent scan in the current session. */
+    fun resendLastScan() {
+        val batchId = _currentBatchId.value ?: return
+        viewModelScope.launch {
+            val scans = dao.getScansForBatchSync(batchId)
+            val last = scans.maxByOrNull { it.timestamp } ?: return@launch
+            resendScanAsync(last.id, last.data, last.type)
+        }
+    }
+
+    /** Resend every unsent scan in the current session. */
+    fun resendAllUnsentInCurrentBatch() {
+        val batchId = _currentBatchId.value ?: return
+        viewModelScope.launch {
+            val scans = dao.getScansForBatchSync(batchId)
+            resendUnsentScans(scans)
+        }
     }
 
     // Bulk resending

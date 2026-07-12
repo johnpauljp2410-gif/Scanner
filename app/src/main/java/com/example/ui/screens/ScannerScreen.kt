@@ -462,23 +462,66 @@ fun ScannerScreen(
             }
         }
 
-        // Live Counters Overlay (Right under the status bar)
+        // Live Counters Overlay + compact Resend buttons
         if (!isConnectMode) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .padding(top = 110.dp)
-                    .padding(horizontal = 18.dp)
-                    .background(Color(0xE60F172A), RoundedCornerShape(14.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceAround
+                    .padding(horizontal = 18.dp),
+                horizontalAlignment = Alignment.End
             ) {
-                CounterStat("Total", totalScans, Color.White)
-                CounterStat("Unique", uniqueScans, Color(0xFF93C5FD))
-                CounterStat("Sent", sentScans, Color(0xFF86EFAC))
-                CounterStat("Pending", failedScans, Color(0xFFFCA5A5))
+                // Counter bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xE60F172A), RoundedCornerShape(14.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                        .padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    CounterStat("Total",   totalScans,  Color.White)
+                    CounterStat("Unique",  uniqueScans, Color(0xFF93C5FD))
+                    CounterStat("Sent",    sentScans,   Color(0xFF86EFAC))
+                    CounterStat("Pending", failedScans, Color(0xFFFCA5A5))
+                }
+
+                // ── Compact Resend buttons (right-aligned, below counter) ──
+                Row(
+                    modifier = Modifier.padding(top = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = { viewModel.resendLastScan() },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        modifier = Modifier
+                            .height(26.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(99.dp))
+                    ) {
+                        Text(
+                            text = "↺ Last",
+                            color = Color(0xFF93C5FD),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    TextButton(
+                        onClick = { viewModel.resendAllUnsentInCurrentBatch() },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        modifier = Modifier
+                            .height(26.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(99.dp))
+                    ) {
+                        Text(
+                            text = "↺ All",
+                            color = Color(0xFFFCA5A5),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
 
