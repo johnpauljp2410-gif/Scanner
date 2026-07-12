@@ -85,7 +85,8 @@ prefix_text     = ""
 suffix_text     = ""
 connected_devices = {}          # ip → {count, last_seen, last_seen_ts}
 scan_log          = []          # newest first, max 200
-scan_queue        = queue.Queue()   # serializes typing — no overlap
+scan_queue        = queue.Queue()   # serializes typing in queue mode
+current_mode      = "direct"        # "direct" | "queue"  — tracked for UI
 flask_running     = False
 tray_running      = False
 tray_icon_obj     = None
@@ -307,10 +308,27 @@ def scan():
         scanned_count += 1
         current_count  = scanned_count
 
-    _update_device(client_ip)
+    _update_device(client_ip)   # register device first, then read count
 
-    # Enqueue — HTTP response is instant, typing happens serially in worker
-    scan_queue.put((barcode, scan_type, client_ip, current_count))
+    with state_lock:
+        device_count = len(connected_devices)
+
+    if device_count <= 1:
+        # ⚡ DIRECT MODE — single device, type immediately, instant output
+        try:
+            type_text(barcode)
+            if auto_enter:
+                pyautogui.press('enter')
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
+        play_scan_sound()
+        root.after(0, lambda b=barcode, t=scan_type,
+                          ip=client_ip, c=current_count:
+                   _ui_on_scan(b, t, ip, c))
+    else:
+        # 🔀 QUEUE MODE — multiple devices, enqueue for serial typing
+        scan_queue.put((barcode, scan_type, client_ip, current_count))
+
     return jsonify({"status": "ok"}), 200
 
 def run_flask():
@@ -346,6 +364,7 @@ def _update_device(ip):
         dev['last_seen']    = now_str()
         dev['last_seen_ts'] = time.time()
     root.after(0, _refresh_devices_ui)
+    root.after(0, _update_mode_label)
 
 def _cleanup_old_devices():
     """Remove devices not seen in the last 2 minutes."""
@@ -357,6 +376,7 @@ def _cleanup_old_devices():
             del connected_devices[ip]
     if stale:
         root.after(0, _refresh_devices_ui)
+        root.after(0, _update_mode_label)
     root.after(30_000, _cleanup_old_devices)
 
 # ============================================================
@@ -396,6 +416,24 @@ def _refresh_devices_ui():
                 f"🟢  {ip:<18}  scans: {info['count']:<5}  last: {info['last_seen']}\n"
             )
     devices_box.config(state=tk.DISABLED)
+
+def _update_mode_label():
+    """Reflect current typing mode in the UI badge — called from main thread."""
+    global current_mode
+    with state_lock:
+        n = len(connected_devices)
+    if n <= 1:
+        current_mode = "direct"
+        mode_label.config(
+            text=f"⚡  Direct Mode  —  {n} device active  (instant output)",
+            fg="#00b894", bg=C("bg"),
+        )
+    else:
+        current_mode = "queue"
+        mode_label.config(
+            text=f"🔀  Queue Mode  —  {n} devices active  (serial, no overlap)",
+            fg="#e67e22", bg=C("bg"),
+        )
 
 # ============================================================
 # QR CODE
@@ -566,6 +604,7 @@ def apply_theme():
 
     fw_label.configure(fg="#27ae60")
     last_label.configure(fg=C("muted"))
+    _update_mode_label()   # re-applies bg + correct mode colour
 
 # ============================================================
 # UI SETUP
@@ -647,6 +686,10 @@ count_label.pack()
 last_label = tk.Label(stats_frame, text="Waiting for first scan...",
                       font=("Arial", 9), bg=C("bg"), fg=C("muted"))
 last_label.pack()
+mode_label = tk.Label(stats_frame,
+                      text="⚡  Direct Mode  —  0 devices active  (instant output)",
+                      font=("Arial", 8, "bold"), bg=C("bg"), fg="#00b894")
+mode_label.pack(pady=(2, 0))
 
 # ── Buttons Row 1 ────────────────────────────────────────────
 btns_row1 = tk.Frame(root, bg=C("bg"))
